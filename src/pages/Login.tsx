@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   signInWithGoogle,
   loginWithEmail,
+  resetPassword,
 } from '../services/auth'
 import { getAuthErrorMessage } from '../utils/authErrors'
 
@@ -10,6 +11,7 @@ function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const location = useLocation()
   const navigate = useNavigate()
@@ -41,6 +43,27 @@ function Login() {
     } catch (error) {
       console.error(error)
       setError(getAuthErrorMessage(error))
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email address first.')
+      return
+    }
+
+    try {
+      await resetPassword(email.trim())
+
+      setError('')
+      alert(
+        'Password reset email sent. Check your email inbox.',
+      )
+    } catch (error) {
+      console.error(error)
+      setError(
+        'Unable to send password reset email. Please check your email address.',
+      )
     }
   }
 
@@ -106,24 +129,44 @@ function Login() {
                     />
                   </div>
 
-                  <div className="mb-3">
-                    <label
-                      htmlFor="password"
-                      className="form-label"
-                    >
-                      Password
-                    </label>
-
+                  <div className="input-group">
                     <input
-                      type="password"
-                      id="password"
+                      type={showPassword ? 'text' : 'password'}
                       className="form-control"
-                      placeholder="Enter your password"
                       value={password}
-                      onChange={(e) =>
-                        setPassword(e.target.value)
-                      }
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      required
                     />
+
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() =>
+                        setShowPassword(!showPassword)
+                      }
+                      aria-label={
+                        showPassword
+                          ? 'Hide password'
+                          : 'Show password'
+                      }
+                    >
+                      <i
+                        className={`bi ${showPassword
+                          ? 'bi-eye-slash'
+                          : 'bi-eye'
+                          }`}
+                      ></i>
+                    </button>
+                  </div>
+                  <div className="text-end mt-2">
+                    <button
+                      type="button"
+                      className="btn btn-link p-0"
+                      onClick={handleForgotPassword}
+                    >
+                      Forgot password?
+                    </button>
                   </div>
 
                   <button

@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 
 function Register() {
+    const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
@@ -18,7 +19,7 @@ function Register() {
         setError('')
 
         try {
-            await registerWithEmail(email, password)
+            await registerWithEmail(name, email, password)
             const from = location.state?.from || '/'
             navigate(from)
         } catch (error) {
@@ -71,6 +72,22 @@ function Register() {
                 )}
 
                 <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label htmlFor="name" className="form-label">
+                            Full Name
+                        </label>
+
+                        <input
+                            type="text"
+                            id="name"
+                            className="form-control"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Enter your full name"
+                            required
+                        />
+                    </div>
+
                     <div className="mb-3">
                         <label htmlFor="email" className="form-label">
                             Email Address
