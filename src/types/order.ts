@@ -58,6 +58,7 @@ export type OrderPricing = {
 
 export type Order = {
   id: string
+  userId: string
   customer: OrderCustomer
   items: OrderItem[]
   orderNumber: string

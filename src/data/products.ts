@@ -6,6 +6,7 @@ export const products: Product[] = [
         id: 'vitamin-c-001',
         name: 'Vitamin C 1000mg',
         slug: 'vitamin-c-1000mg',
+        isPublished: true,
         description: 'Vitamin C supplement for daily nutritional support.',
         price: 15000,
         stockQuantity: 25,

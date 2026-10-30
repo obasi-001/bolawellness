@@ -1,15 +1,45 @@
 import { useParams } from 'react-router-dom'
-import { useState, useContext } from 'react'
-import { products } from '../data/products'
+import { useState, useContext, useEffect } from 'react'
+import { getProductBySlug } from '../services/productService'
+import type { Product } from '../types/product'
 import { CartContext } from '../context/CartContext'
 
 function ProductDetails() {
     const { slug } = useParams()
 
+    const [product, setProduct] = useState<Product | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
+
     const [selectedImage, setSelectedImage] = useState(0)
     const cart = useContext(CartContext)
 
-    const product = products.find((product) => product.slug === slug)
+
+    useEffect(() => {
+        async function loadProduct() {
+            if (!slug) {
+                setLoading(false)
+                return
+            }
+
+            try {
+                setLoading(true)
+                setError('')
+
+                const fetchedProduct = await getProductBySlug(slug)
+
+                setProduct(fetchedProduct)
+                setSelectedImage(0)
+            } catch (error) {
+                console.error('Error loading product:', error)
+                setError('Unable to load this product. Please try again.')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        loadProduct()
+    }, [slug])
 
 
 
@@ -19,6 +49,29 @@ function ProductDetails() {
             <section className="py-5">
                 <div className="container">
                     <h1>Product not found</h1>
+                </div>
+            </section>
+        )
+    }
+
+    if (loading) {
+        return (
+            <section className="py-5">
+                <div className="container text-center">
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p className="mt-3">Loading product...</p>
+                </div>
+            </section>
+        )
+    }
+
+    if (error) {
+        return (
+            <section className="py-5">
+                <div className="container text-center">
+                    <p className="text-danger">{error}</p>
                 </div>
             </section>
         )
@@ -36,7 +89,11 @@ function ProductDetails() {
                             data-bs-target="#productImageModal"
                         >
                             <img
-                                src={product.images[selectedImage].url}
+                                src={
+                                    product.images[selectedImage]?.url ||
+                                    product.images[0]?.url ||
+                                    '/placeholder.png'
+                                }
                                 alt={product.name}
                                 className="img-fluid rounded w-100"
                             />
@@ -85,9 +142,12 @@ function ProductDetails() {
                         <button
                             type="button"
                             className="btn btn-primary mt-3"
+                            disabled={product.stockStatus === 'out-of-stock' || product.stockQuantity <= 0}
                             onClick={() => cart?.addToCart(product)}
                         >
-                            Add to Cart
+                            {product.stockStatus === 'out-of-stock' || product.stockQuantity <= 0
+                                ? 'Out of Stock'
+                                : 'Add to Cart'}
                         </button>
                         {product.attributes.length > 0 && (
                             <div className="mt-4">
@@ -132,7 +192,11 @@ function ProductDetails() {
 
                         <div className="modal-body text-center">
                             <img
-                                src={product.images[selectedImage].url}
+                                src={
+                                    product.images[selectedImage]?.url ||
+                                    product.images[0]?.url ||
+                                    '/placeholder.png'
+                                }
                                 alt={product.images[selectedImage].alt}
                                 className="img-fluid rounded"
                             />

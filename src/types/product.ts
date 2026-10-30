@@ -21,4 +21,5 @@ export type Product = {
   stockStatus: 'in-stock' | 'out-of-stock'
   images: ProductImage[]
   attributes: ProductAttribute[]
+  isPublished: boolean
 }
