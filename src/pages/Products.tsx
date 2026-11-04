@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { getProducts } from '../services/productService'
 import type { Product } from '../types/product'
+import ProductCard from '../components/products/ProductCard'
 
 function Products() {
 
@@ -61,30 +61,7 @@ function Products() {
         <div className="row g-4">
           {products.map((product) => (
             <div key={product.id} className="col-6 col-lg-3">
-              <Link
-                to={`/products/${product.slug}`}
-                className="text-decoration-none text-body"
-              >
-                <div className="card h-100">
-                  <img
-                    src={
-                      product.images.find((image) => image.isPrimary)?.url ||
-                      product.images[0]?.url ||
-                      '/placeholder.png'
-                    }
-                    alt={product.name}
-                    className="card-img-top"
-                  />
-
-                  <div className="card-body">
-                    <h2 className="h5">{product.name}</h2>
-
-                    <p className="mb-0">
-                      ₦{product.price.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </Link>
+              <ProductCard product={product} />
             </div>
           ))}
         </div>
