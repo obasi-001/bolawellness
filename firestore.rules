@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    function validEmail() {
+      return request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email;
+    }
+
+    function validCustomerNumber(userId) {
+      let customerNumber = request.resource.data.customerNumber;
+      let reservationPath = /databases/$(database)/documents/customerNumbers/$(customerNumber);
+
+      return customerNumber is string
+        && customerNumber.matches('CUS-[A-Z0-9]{6}')
+        && existsAfter(reservationPath)
+        && getAfter(reservationPath).data.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly([
+          'phone', 'address', 'city', 'state', 'customerNumber', 'email'
+        ])
+        && (!request.resource.data.keys().hasAny(['email']) || validEmail())
+        && (!request.resource.data.keys().hasAny(['customerNumber']) || validCustomerNumber(userId));
+
+      allow update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly([
+          'phone', 'address', 'city', 'state', 'customerNumber', 'email'
+        ])
+        && (!request.resource.data.keys().hasAny(['email']) || validEmail())
+        && (
+          (resource.data.keys().hasAny(['email'])
+            && request.resource.data.keys().hasAny(['email'])
+            && request.resource.data.email == resource.data.email)
+          ||
+          (!resource.data.keys().hasAny(['email'])
+            && (!request.resource.data.keys().hasAny(['email']) || validEmail()))
+        )
+        && (
+          (resource.data.keys().hasAny(['customerNumber'])
+            && request.resource.data.customerNumber == resource.data.customerNumber)
+          ||
+          (!resource.data.keys().hasAny(['customerNumber'])
+            && !request.resource.data.keys().hasAny(['customerNumber']))
+          ||
+          (!resource.data.keys().hasAny(['customerNumber']) && validCustomerNumber(userId))
+        );
+
+      allow delete: if false;
+    }
+
+    match /customerNumbers/{customerNumber} {
+      allow get: if request.auth != null;
+      allow list: if false;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && customerNumber.matches('CUS-[A-Z0-9]{6}')
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.customerNumber == customerNumber;
+
+      allow update, delete: if false;
+    }
+
+    match /products/{productId} {
+      allow get, list: if resource.data.isPublished == true;
+      allow create, update, delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow get, list: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+
+      allow create, update, delete: if false;
+    }
+  }
+}

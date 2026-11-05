@@ -2,6 +2,7 @@ import { useContext, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CartContext } from '../context/CartContext'
 import { AuthContext } from '../context/AuthContext'
+import { createOrder } from '../services/orderService'
 
 function Checkout() {
     const cart = useContext(CartContext)
@@ -18,6 +19,7 @@ function Checkout() {
 
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     if (!cart) {
         return null
@@ -33,36 +35,60 @@ function Checkout() {
     )
 
     // Handle checkout form submission
-    const handleContinue = () => {
+    const handleContinue = async () => {
         setError('')
         setSuccess('')
 
-        // Require customer authentication
         if (!auth?.user) {
             navigate('/login', {
-                state: {
-                    from: '/checkout',
-                },
+                state: { from: '/checkout' },
             })
-
             return
         }
 
-        // Check empty cart
         if (cart.cartItems.length === 0) {
-            setError('Your cart is empty. Please add products before checkout.')
+            setError('Your cart is empty.')
             return
         }
 
-        // Check product availability
-        if (hasUnavailableProducts) {
-            setError(
-                'Your cart contains unavailable products or quantities exceeding available stock. Please return to your cart.'
+        if (success) {
+            return (
+                <section className="py-5">
+                    <div className="container text-center">
+
+                        <i className="bi bi-check-circle-fill display-1 text-success"></i>
+
+                        <h1 className="h3 mt-3">
+                            Order placed successfully!
+                        </h1>
+
+                        <p className="text-body-secondary">
+                            Your order number is:
+                        </p>
+
+                        <h4 className="text-primary">
+                            {success}
+                        </h4>
+
+                        <p>
+                            We will contact you to confirm delivery arrangements
+                            before payment.
+                        </p>
+
+                        <Link to="/account" className="btn btn-primary mt-3">
+                            Go to My Account
+                        </Link>
+
+                    </div>
+                </section>
             )
+        }
+
+        if (hasUnavailableProducts) {
+            setError('Your cart contains unavailable products or quantities exceeding available stock.')
             return
         }
 
-        // Validate customer information
         if (!fullName.trim()) {
             setError('Please enter your full name.')
             return
@@ -92,26 +118,48 @@ function Checkout() {
             return
         }
 
-        if (!address.trim()) {
-            setError('Please enter your delivery address.')
+        if (!address.trim() || !city.trim() || !state.trim()) {
+            setError('Please complete your delivery address, city and state.')
             return
         }
 
-        if (!city.trim()) {
-            setError('Please enter your city.')
-            return
-        }
+        try {
+            setIsSubmitting(true)
 
-        if (!state.trim()) {
-            setError('Please enter your state.')
-            return
-        }
+            const order = await createOrder({
+                userId: auth.user.uid,
 
-        // Customer information is valid.
-        // Firestore order creation will be connected in the next stage.
-        setSuccess(
-            'Your information has been validated successfully.'
-        )
+                customer: {
+                    fullName: fullName.trim(),
+                    email: email.trim(),
+                    phone: phone.trim(),
+                    address: address.trim(),
+                    city: city.trim(),
+                    state: state.trim(),
+                    note: orderNote.trim(),
+                },
+
+                cartItems: cart.cartItems,
+            })
+
+            // Clear the cart only after successful order creation.
+            cart.cartItems.forEach((item) => {
+                cart.removeFromCart(item.product.id)
+            })
+
+            setSuccess(order.orderNumber)
+
+        } catch (error) {
+            console.error('Order creation failed:', error)
+
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : 'Unable to place your order. Please try again.'
+            )
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     // Empty cart protection
@@ -360,10 +408,19 @@ function Checkout() {
                                     type="button"
                                     className="btn btn-primary w-100"
                                     onClick={handleContinue}
-                                    disabled={hasUnavailableProducts}
+                                    disabled={hasUnavailableProducts || isSubmitting}
                                 >
-                                    Continue
-                                    <i className="bi bi-arrow-right ms-2"></i>
+                                    {isSubmitting ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2"></span>
+                                            Placing Order...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Place Order
+                                            <i className="bi bi-arrow-right ms-2"></i>
+                                        </>
+                                    )}
                                 </button>
 
                                 <p className="small text-body-secondary mt-3 mb-0">

@@ -1,7 +1,7 @@
 import app from '../firebase'
-
 import {
   getAuth,
+  connectAuthEmulator,
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
@@ -15,6 +15,10 @@ import {
 } from 'firebase/auth'
 
 export const auth = getAuth(app)
+
+if (import.meta.env.DEV) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099')
+}
 
 const googleProvider = new GoogleAuthProvider()
 
