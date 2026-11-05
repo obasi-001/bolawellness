@@ -1,4 +1,4 @@
-import { createContext, useState } from 'react'
+import { createContext, useState, useEffect } from 'react'
 import type { CartItem } from '../types/cart'
 
 type CartContextType = {
@@ -18,8 +18,60 @@ type CartProviderProps = {
     children: React.ReactNode
 }
 
+const CART_STORAGE_KEY = 'ecommerce-cart'
+
+// Restore cart from localStorage
+function getSavedCart(): CartItem[] {
+    try {
+        const savedCart = localStorage.getItem(CART_STORAGE_KEY)
+
+        if (!savedCart) {
+            return []
+        }
+
+        const parsedCart: unknown = JSON.parse(savedCart)
+
+        if (!Array.isArray(parsedCart)) {
+            return []
+        }
+
+        // Check that saved cart data has the expected structure
+        return parsedCart.filter(
+            (item): item is CartItem =>
+                item !== null &&
+                typeof item === 'object' &&
+                'product' in item &&
+                'quantity' in item &&
+                typeof item.product === 'object' &&
+                item.product !== null &&
+                'id' in item.product &&
+                typeof item.product.id === 'string' &&
+                typeof item.quantity === 'number' &&
+                Number.isFinite(item.quantity) &&
+                item.quantity >= 1
+        )
+    } catch (error) {
+        console.error('Error restoring cart:', error)
+        return []
+    }
+}
+
 export function CartProvider({ children }: CartProviderProps) {
-    const [cartItems, setCartItems] = useState<CartItem[]>([])
+
+    // Load saved cart when the application starts
+    const [cartItems, setCartItems] = useState<CartItem[]>(getSavedCart)
+
+    // Save cart whenever it changes
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                CART_STORAGE_KEY,
+                JSON.stringify(cartItems)
+            )
+        } catch (error) {
+            console.error('Error saving cart:', error)
+        }
+    }, [cartItems])
 
     // Total number of products in the cart
     const cartCount = cartItems.reduce(
@@ -36,6 +88,7 @@ export function CartProvider({ children }: CartProviderProps) {
 
     // Add a product only if it is not already in the cart
     const addToCart = (product: CartItem['product']) => {
+
         if (
             product.stockStatus !== 'in-stock' ||
             product.stockQuantity <= 0 ||
@@ -45,11 +98,11 @@ export function CartProvider({ children }: CartProviderProps) {
         }
 
         setCartItems((currentItems) => {
+
             const existingItem = currentItems.some(
                 (item) => item.product.id === product.id
             )
 
-            // Do not increase quantity if the product already exists
             if (existingItem) {
                 return currentItems
             }
@@ -64,10 +117,12 @@ export function CartProvider({ children }: CartProviderProps) {
         })
     }
 
-    // Change product quantity from the cart page
+    // Update product quantity
     const updateQuantity = (productId: string, quantity: number) => {
+
         setCartItems((currentItems) =>
             currentItems.map((item) => {
+
                 if (item.product.id !== productId) {
                     return item
                 }
@@ -85,8 +140,9 @@ export function CartProvider({ children }: CartProviderProps) {
         )
     }
 
-    // Remove a product from the cart
+    // Remove product from cart
     const removeFromCart = (productId: string) => {
+
         setCartItems((currentItems) =>
             currentItems.filter(
                 (item) => item.product.id !== productId
